@@ -1,34 +1,7 @@
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Action": [
-        "ec2:CreateNetworkInterface",
-        "ec2:DescribeNetworkInterfaces",
-        "ec2:DeleteNetworkInterface"
-      ],
-      "Effect": "Allow",
-      "Resource": "*"
-    },
-    {
-      "Action": [
-        "ecs:DescribeClusters",
-        "ecs:DescribeServices",
-        "ecs:ListClusters",
-        "ecs:ListServices",
-        "ecs:UpdateService",
-        "ecs:ListTagsForResource"
-      ],
-      "Effect": "Allow",
-      "Resource": "*"
-    },
-    {
-      "Action": [
-        "application-autoscaling:RegisterScalableTarget",
-        "application-autoscaling:DescribeScalableTargets"
-      ],
-      "Effect": "Allow",
-      "Resource": "*"
-    }
-  ]
-}
+cd /home/jccbzlf/development/ft5/plataforma/docs/test/itau-ft5-doc-squad-tron
+
+podman build -f .devcontainer/Dockerfile -t doc-squad-tron .
+
+podman run -it \
+  -v $(pwd):/workspaces/itau-ft5-doc-squad-tron \
+  doc-squad-tron bash
