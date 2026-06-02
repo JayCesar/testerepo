@@ -1,7 +1,6 @@
-cd /home/jccbzlf/development/ft5/plataforma/docs/test/itau-ft5-doc-squad-tron
+exit
 
-podman build -f .devcontainer/Dockerfile -t doc-squad-tron .
-
-podman run -it \
+docker run -it \
+  --user root \
   -v $(pwd):/workspaces/itau-ft5-doc-squad-tron \
-  doc-squad-tron bash
+  localhost/doc-squad-tron:latest bash
