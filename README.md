@@ -1,3 +1,1 @@
-chmod -R 777 /workspaces/itau-ft5-doc-squad-tron
-cd /workspaces/itau-ft5-doc-squad-tron
-ls
+export DOCKER_HOST=unix:///run/user/1661500774/podman/podman.sock
