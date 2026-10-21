@@ -1,0 +1,10 @@
+pedido_id,data_pedido,fornecedor_id,fornecedor,material_id,descricao,crd,fabrica,quantidade,preco_unitario,valor_total,prazo_entrega,solicitante,aprovador_compra
+P001,2026-10-01,F01,Grafica Alfa,MAT-100,Folheto boas-vindas credito,CRD-001,FAB-SP,10000,0.50,5000.00,2026-10-10,ana.compras,carlos.gestor
+P002,2026-10-02,F02,Grafica Beta,MAT-200,Kit comunicacao debito,CRD-002,FAB-RJ,20000,0.40,8000.00,2026-10-20,ana.compras,carlos.gestor
+P003,2026-10-03,F01,Grafica Alfa,MAT-300,Encarte de beneficios,CRD-001,FAB-SP,5000,1.20,6000.00,2026-10-18,bruno.compras,carlos.gestor
+P004,2026-10-05,F02,Grafica Beta,MAT-100,Folheto boas-vindas credito,CRD-003,FAB-RJ,8000,0.50,4000.00,2026-10-27,ana.compras,carlos.gestor
+P005,2026-10-06,F01,Grafica Alfa,MAT-200,Kit comunicacao debito,CRD-002,FAB-SP,3000,0.80,2400.00,2026-10-14,bruno.compras,carlos.gestor
+P006,2026-10-07,F02,Grafica Beta,MAT-300,Encarte de beneficios,CRD-003,FAB-RJ,15000,0.30,4500.00,2026-10-22,ana.compras,carlos.gestor
+P007,2026-10-08,F01,Grafica Alfa,MAT-100,Folheto boas-vindas credito,,,6000,0.45,2700.00,2026-10-19,bruno.compras,carlos.gestor
+P008,2026-10-20,F02,Grafica Beta,MAT-200,Kit comunicacao debito,CRD-001,FAB-SP,12000,0.35,4200.00,2026-11-10,ana.compras,carlos.gestor
+P009,2026-10-04,F01,Grafica Alfa,MAT-300,Encarte de beneficios,CRD-002,FAB-SP,9000,0.60,5400.00,2026-10-16,bruno.compras,carlos.gestor

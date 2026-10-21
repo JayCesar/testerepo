@@ -1,0 +1,13 @@
+{
+  "name": "motor-conciliacao",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Motor de conciliação da folheteria (pedido × recebimento × NF × rateio)",
+  "scripts": {
+    "start": "node --experimental-strip-types --no-warnings src/cli.ts",
+    "json": "node --experimental-strip-types --no-warnings src/cli.ts --json",
+    "test": "node --experimental-strip-types --no-warnings --test test/motor.test.ts"
+  },
+  "engines": { "node": ">=22.6" }
+}

@@ -1,0 +1,9 @@
+recebimento_id,pedido_id,data_recebimento,quantidade,local,conferente,comprovante
+R001,P001,2026-10-08,10000,FAB-SP,joao.fabrica,COMP-001
+R002,P002,2026-10-15,12000,FAB-RJ,maria.fabrica,COMP-002
+R003,P003,2026-10-17,5000,FAB-SP,joao.fabrica,COMP-003
+R004,P004,2026-10-26,8000,FAB-RJ,maria.fabrica,COMP-004
+R005,P005,2026-10-12,3000,FAB-SP,joao.fabrica,COMP-005
+R006,P006,2026-10-21,14000,FAB-RJ,maria.fabrica,COMP-006
+R007,P007,2026-10-19,6000,FAB-SP,joao.fabrica,COMP-007
+R009,P009,2026-10-15,9000,FAB-SP,joao.fabrica,COMP-009
