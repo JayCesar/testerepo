@@ -42,4 +42,4 @@ O motor é TypeScript puro sem dependência. Dá para colar `regras.ts` e `motor
 
 ## Versão Microsoft 365 (Power Automate + Office Script)
 
-Ver `office-script/POWER-AUTOMATE.md`. Script: `office-script/conciliacao.ts`. Planilha de exemplo: `office-script/folheteria-exemplo.xlsx`.
+Ver `office-script/POWER-AUTOMATE.md` (SharePoint) ou `sql/POWER-AUTOMATE-SQL.md` (SQL Server). Script: `office-script/conciliacao.ts`. Planilha de exemplo: `office-script/folheteria-exemplo.xlsx`.
