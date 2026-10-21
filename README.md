@@ -34,3 +34,8 @@ features/*.feature    os mesmos cenários em Gherkin, para o Example Mapping com
 
 O motor é TypeScript puro sem dependência. Dá para colar `regras.ts` e `motor.ts` dentro de um service Angular
 (ou num script com `tsc`) sem mudar a lógica.
+
+## Documentos
+
+- `PLANO-AMANHA.md`: roteiro do dia, perguntas para o negócio, telas e pitch
+- `regras-e-cenarios.md`: tabela de regras + gabarito
