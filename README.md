@@ -39,3 +39,7 @@ O motor é TypeScript puro sem dependência. Dá para colar `regras.ts` e `motor
 
 - `PLANO-AMANHA.md`: roteiro do dia, perguntas para o negócio, telas e pitch
 - `regras-e-cenarios.md`: tabela de regras + gabarito
+
+## Versão Microsoft 365 (Power Automate + Office Script)
+
+Ver `office-script/POWER-AUTOMATE.md`. Script: `office-script/conciliacao.ts`. Planilha de exemplo: `office-script/folheteria-exemplo.xlsx`.
