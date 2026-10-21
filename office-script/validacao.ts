@@ -27,6 +27,8 @@ interface ErroValidacao {
 }
 
 interface ResultadoValidacao {
+  valido: boolean;    // mesmo campo do script ValidarArquivoFabrica original
+  mensagem: string;
   ok: boolean;
   aba: string;
   totalLinhas: number;
@@ -51,7 +53,7 @@ function main(
   const intervalo = aba.getUsedRange();
   const valores = intervalo.getValues() as Celula[][];
   if (valores.length < 2) {
-    return { ok: true, aba: aba.getName(), totalLinhas: 0, linhasComErro: 0, camposVazios: 0, fabricasEmSigla: 0, erros: [] };
+    return { valido: true, mensagem: "Planilha sem linhas de dados", ok: true, aba: aba.getName(), totalLinhas: 0, linhasComErro: 0, camposVazios: 0, fabricasEmSigla: 0, erros: [] };
   }
 
   const cabecalho = valores[0].map((c) => texto(c));
@@ -103,13 +105,19 @@ function main(
 
   escreverRelatorio(workbook, erros);
 
+  const vazios = erros.filter((e) => e.problema === "CAMPO_VAZIO").length;
+  const siglas = erros.filter((e) => e.problema === "FABRICA_EM_SIGLA").length;
   return {
+    valido: erros.length === 0,
+    mensagem: erros.length === 0
+      ? `Arquivo válido: ${totalLinhas} linhas verificadas`
+      : `Arquivo inválido: ${vazios} campo(s) vazio(s) e ${siglas} fábrica(s) em sigla. Veja a aba Validacao.`,
     ok: erros.length === 0,
     aba: aba.getName(),
     totalLinhas,
     linhasComErro: Object.keys(linhasComErro).length,
-    camposVazios: erros.filter((e) => e.problema === "CAMPO_VAZIO").length,
-    fabricasEmSigla: erros.filter((e) => e.problema === "FABRICA_EM_SIGLA").length,
+    camposVazios: vazios,
+    fabricasEmSigla: siglas,
     erros,
   };
 }
