@@ -14,7 +14,11 @@
 // o script sugere o nome completo para cada sigla encontrada. Não corrige sozinho (validação humana).
 //
 // Saída: aba "Validacao" com a tabela "TabelaValidacao", células com erro destacadas
-// e um JSON para o Power Automate decidir (campo "ok").
+// e um JSON para o Power Automate decidir (campo "valido").
+//
+// "hash": impressão digital do CONTEÚDO da aba validada. Mesmo conteúdo = mesmo hash,
+// mesmo que o arquivo tenha outro nome ou venha em outro e-mail. Usado para detectar reenvio
+// do mesmo arquivo (idempotência por conteúdo). Cores/formatação não alteram o hash.
 
 type Celula = string | number | boolean;
 
@@ -29,6 +33,7 @@ interface ErroValidacao {
 interface ResultadoValidacao {
   valido: boolean;    // mesmo campo do script ValidarArquivoFabrica original
   mensagem: string;
+  hash: string;       // impressão digital do conteúdo
   ok: boolean;
   aba: string;
   totalLinhas: number;
@@ -52,8 +57,9 @@ function main(
 
   const intervalo = aba.getUsedRange();
   const valores = intervalo.getValues() as Celula[][];
+  const hash = calcularHash(valores);
   if (valores.length < 2) {
-    return { valido: true, mensagem: "Planilha sem linhas de dados", ok: true, aba: aba.getName(), totalLinhas: 0, linhasComErro: 0, camposVazios: 0, fabricasEmSigla: 0, erros: [] };
+    return { valido: true, mensagem: "Planilha sem linhas de dados", hash, ok: true, aba: aba.getName(), totalLinhas: 0, linhasComErro: 0, camposVazios: 0, fabricasEmSigla: 0, erros: [] };
   }
 
   const cabecalho = valores[0].map((c) => texto(c));
@@ -112,6 +118,7 @@ function main(
     mensagem: erros.length === 0
       ? `Arquivo válido: ${totalLinhas} linhas verificadas`
       : `Arquivo inválido: ${vazios} campo(s) vazio(s) e ${siglas} fábrica(s) em sigla. Veja a aba Validacao.`,
+    hash,
     ok: erros.length === 0,
     aba: aba.getName(),
     totalLinhas,
@@ -170,4 +177,28 @@ function vazio(v: Celula | undefined): boolean {
 }
 function normalizar(s: string): string {
   return s.normalize("NFD").replace(/[̀-ͯ]/g, "").trim().toLowerCase().replace(/\s+/g, "_");
+}
+
+// Hash do conteúdo (cyrb53 com duas sementes → 26 caracteres hex).
+// Ignora linhas totalmente em branco e espaços nas pontas; considera a ordem das linhas.
+function calcularHash(valores: Celula[][]): string {
+  const texto = valores
+    .filter((linha) => linha.some((c) => String(c).trim() !== ""))
+    .map((linha) => linha.map((c) => String(c).trim()).join("\u001f"))
+    .join("\u001e");
+  return cyrb53(texto, 1) + cyrb53(texto, 2);
+}
+
+function cyrb53(str: string, seed: number): string {
+  let h1 = 0xdeadbeef ^ seed;
+  let h2 = 0x41c6ce57 ^ seed;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  const n = 4294967296 * (2097151 & h2) + (h1 >>> 0);
+  return n.toString(16).padStart(14, "0").slice(-13);
 }
