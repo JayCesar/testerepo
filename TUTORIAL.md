@@ -4,7 +4,7 @@ Este tutorial parte do zero: considera que você nunca usou o Power Automate.
 Ao final você terá um fluxo que:
 
 1. Recebe e-mails com um assunto específico e anexo `.xlsx`.
-2. **Valida o arquivo antes de guardar qualquer coisa.**
+2. **Valida o arquivo antes de guardar qualquer coisa** (colunas obrigatórias, campos vazios, QTDE NF = QTDE FÍSICA) e corrige nomes de empresa abreviados pelo de-para.
 3. **Se o arquivo estiver errado:** responde ao remetente com os erros e o arquivo marcado, avisa o time e **não guarda nada** (nem arquivo, nem registro).
 4. **Se o arquivo estiver certo:** confere se não é repetido; se não for, guarda o arquivo em `Validados`, **registra na lista** e confirma ao remetente.
 5. **Não processa duas vezes o mesmo e-mail nem o mesmo arquivo** (idempotência).
@@ -104,7 +104,7 @@ Não existe forma de rodar o script direto no anexo do e-mail.
 Então o fluxo faz assim:
 
 1. Salva o anexo numa pasta **Temp** — só para conseguir rodar o script.
-2. Roda o script.
+2. Roda o script (que também corrige nomes de empresa abreviados, quando o arquivo está certo).
 3. **Se estiver errado:** pega o arquivo marcado (com as células coloridas), devolve ao remetente e **apaga** o arquivo da Temp.
 4. **Se estiver certo:** **move** o arquivo da Temp para `Validados` e registra na lista.
 
@@ -291,55 +291,73 @@ O fluxo vai **procurar** na lista por `Title` e por `Hash`. Com muitos itens, bu
 # Parte 4 — Preparar o Office Script
 
 O Office Script é o código (TypeScript) que roda **dentro do Excel** e faz a validação.
-Ele também calcula o **hash** da camada 2 de idempotência.
+Usamos o script de vocês (`validar_folheteria.ts`) com três acréscimos: **hash** (idempotência), **erros em formato de tabela** (para o e-mail) e **cores** nas células com erro.
 
-## 4.1 Instalar o script
+## 4.1 O que o script valida
 
-1. Abra qualquer arquivo `.xlsx` no **Excel na web** (pelo SharePoint ou OneDrive, no navegador).
-2. Menu de cima → **Automate** (Automatizar).
-3. **New script** (Novo script).
-4. No editor à direita, apague tudo (**Ctrl+A** → **Delete**).
-5. Abra o código em formato texto:
-   **https://raw.githubusercontent.com/JayCesar/testerepo/power-automate/office-script/validacao.ts**
-6. **Ctrl+A** → **Ctrl+C**.
-7. Volte ao editor do Excel → **Ctrl+V**.
-8. Renomeie o script (clique no nome, no topo do editor) para `ValidarArquivoFabrica`.
-   Se já existe um script com esse nome, abra-o em **All scripts** e substitua o conteúdo.
-9. **Save script**.
+| Regra | O que faz | Bloqueia o arquivo? |
+|---|---|---|
+| Cabeçalho | Procura, em qualquer aba, a linha com `EMPRESA FORNECEDORA` e confere se todas as colunas esperadas existem | Sim |
+| Campos vazios | Toda coluna obrigatória precisa estar preenchida (`OBSERVAÇÃO` pode ficar vazia) | Sim — célula pintada de **vermelho** |
+| Quantidades | `QTDE NF` tem que ser igual a `QTDE FÍSICA` | Sim — as duas células pintadas de **amarelo** |
+| Empresa abreviada | Se o nome está no `DE_PARA`, troca pelo nome completo (só quando o arquivo está válido; células com fórmula não são alteradas) | Não — corrige sozinho |
+| Empresa desconhecida | Se o nome não está no `DE_PARA` nem é um nome completo conhecido, gera um **aviso** | Não — só avisa |
+
+## 4.2 Atualizar o script
+
+O arquivo do GitHub vem com um `DE_PARA` **de exemplo** (os nomes reais dos fornecedores não ficam em repositório público). Você mantém o seu.
+
+1. Abra o código em formato texto:
+   **https://raw.githubusercontent.com/JayCesar/testerepo/power-automate/office-script/validar_folheteria.ts**
+2. No seu editor (VS Code ou o editor do Office Scripts), abra o seu script atual.
+3. **Mantenha** o seu bloco `const DE_PARA ... };` (as primeiras linhas).
+4. **Apague tudo que vem depois** do `};` do DE_PARA.
+5. No arquivo do GitHub, copie **tudo a partir da linha** `// DAQUI PARA BAIXO: substitua pelo conteúdo deste arquivo.` até o final.
+6. Cole logo abaixo do seu DE_PARA.
+7. No Excel na web: **Automate** → **All scripts** → abra o script (ex.: `ValidarArquivoFabrica`) → **Ctrl+A** → cole o conteúdo completo → **Save script**.
 
 > O script fica salvo no **seu OneDrive** (*Documents/Office Scripts*). O Power Automate só enxerga scripts salvos pela **mesma conta** que monta o fluxo.
 
-## 4.2 Testar o script no Excel
+## 4.3 Testar o script no Excel
 
-Com uma planilha de teste aberta (com uma coluna `fabrica`), clique em **Run** no editor. Deve aparecer:
-- uma aba **Validacao** com os erros (ou "Nenhum problema encontrado");
-- células vazias em **vermelho claro**;
-- fábricas em sigla (`SP`, `FAB-SP`) em **amarelo claro**.
+Abra uma planilha de teste no Excel na web e clique em **Run** no editor do script.
+- Com uma célula obrigatória vazia: ela fica **vermelha** e o resultado mostra `valido: false`.
+- Com `QTDE NF` diferente de `QTDE FÍSICA`: as duas ficam **amarelas**.
+- Com tudo certo e uma empresa abreviada que está no de-para: o nome é trocado pelo completo e o resultado mostra `valido: true`.
 
-## 4.3 O que o script devolve
+## 4.4 O que o script devolve
 
 ```json
 {
   "valido": false,
-  "mensagem": "Arquivo inválido: 1 campo(s) vazio(s) e 1 fábrica(s) em sigla. Veja a aba Validacao.",
-  "hash": "655ffdc1c7df29fd525e9d92b1",
-  "totalLinhas": 3,
-  "camposVazios": 1,
-  "fabricasEmSigla": 1,
+  "mensagem": "Arquivo com erro: 2 problema(s) (valores vazios e/ou QTDE NF diferente de QTDE FÍSICA). Nenhuma correção aplicada.",
+  "aba": "Plan1",
+  "hash": "4c6174dddd04401e81981fa3a2",
+  "totalLinhas": 12,
   "erros": [
-    { "linha": 3, "coluna": "fabrica", "valor": "FAB-SP", "problema": "FABRICA_EM_SIGLA", "sugestao": "Informar o nome completo da fábrica" },
-    { "linha": 4, "coluna": "crd", "valor": "", "problema": "CAMPO_VAZIO", "sugestao": "Preencher \"crd\"" }
-  ]
+    "Linha 4: 'CRD' vazia",
+    "Linha 4: QTDE NF (100) ≠ QTDE FÍSICA (90)"
+  ],
+  "errosTabela": [
+    { "linha": 4, "coluna": "CRD", "valor": "", "problema": "CAMPO_VAZIO" },
+    { "linha": 4, "coluna": "QTDE NF x QTDE FÍSICA", "valor": "100 x 90", "problema": "QTDE_DIVERGENTE" }
+  ],
+  "corrigidos": [],
+  "avisos": []
 }
 ```
 
-Parâmetros (aparecem como campos na ação do Power Automate):
+| Campo | Uso no fluxo |
+|---|---|
+| `valido` | Decide o caminho (certo/errado) |
+| `mensagem` | Vai no e-mail de resposta |
+| `hash` | Idempotência por conteúdo (camada 2) |
+| `totalLinhas` | Registrado na lista |
+| `errosTabela` | Vira a tabela de erros no e-mail |
+| `corrigidos` | Quais empresas foram corrigidas (vai no e-mail de confirmação) |
+| `avisos` | Empresas que não estão no de-para (vai no e-mail ao time) |
 
-| Parâmetro | Para que serve | Se deixar vazio |
-|---|---|---|
-| `nomeAba` | Nome da aba com os dados | Usa a primeira aba |
-| `colunaFabrica` | Cabeçalho da coluna de fábrica (ignora maiúsculas e acentos) | Procura `fabrica` |
-| `colunasObrigatorias` | Colunas que não podem ficar vazias, separadas por vírgula | Todas as colunas |
+O script **não tem parâmetros**: ele encontra a aba sozinho pelo cabeçalho `EMPRESA FORNECEDORA`.
 
 > **Requisito:** o arquivo tem que ser **.xlsx**. Office Scripts não rodam em `.xls` antigo nem em `.xlsm` (com macro).
 
@@ -561,10 +579,7 @@ Como está:
    - **Document Library**: `Documents` (ou `Shared Documents` / `Documentos`).
    - **File**: ⚡ → em `Salvar temporario` → **Id**. (Se der erro, tente **Path**.)
    - **Script**: `ValidarArquivoFabrica`.
-4. Aparecem os parâmetros do script:
-   - **nomeAba**: nome da aba dos dados (vazio = primeira aba).
-   - **colunaFabrica**: cabeçalho da coluna de fábrica, ex. `fabrica`.
-   - **colunasObrigatorias**: vazio (todas) ou ex. `pedido_id,fabrica,quantidade`.
+4. O script não tem parâmetros: não aparece nenhum campo extra.
 5. **Save**.
 
 > Se o script **não aparece**: foi salvo por outra conta, ou o Excel ainda não sincronizou. Confira no Excel em **Automate → All scripts** e recarregue o Power Automate.
@@ -595,7 +610,7 @@ Tudo abaixo vai **dentro do ramo False** de `Arquivo valido`.
 
 **8a. Transformar os erros numa tabela legível**
 1. **+** → `Select` (em **Data Operation**) → renomeie para `Tabela de erros`.
-2. **From** → **fx** → `outputs('Validar')?['body/result/erros']`
+2. **From** → **fx** → `outputs('Validar')?['body/result/errosTabela']`
 3. **Map** — preencha chave (texto) e valor (**fx**):
 
 | Chave (digite) | Valor (**fx**) |
@@ -603,8 +618,12 @@ Tudo abaixo vai **dentro do ramo False** de `Arquivo valido`.
 | `Linha` | `item()?['linha']` |
 | `Coluna` | `item()?['coluna']` |
 | `Valor` | `item()?['valor']` |
-| `Problema` | `item()?['problema']` |
-| `O que fazer` | `item()?['sugestao']` |
+| `O que fazer` | (expressão abaixo) |
+
+Expressão de **O que fazer** (traduz o código do problema para uma instrução):
+```
+if(equals(item()?['problema'], 'CAMPO_VAZIO'), 'Preencher o campo', if(equals(item()?['problema'], 'QTDE_DIVERGENTE'), 'Conferir QTDE NF e QTDE FÍSICA (devem ser iguais)', 'Incluir esta coluna no cabeçalho'))
+```
 
 4. **+** → `Create HTML table` (em **Data Operation**) → renomeie para `Tabela HTML`.
 5. **From** → ⚡ **Output** de `Tabela de erros`. **Columns**: `Automatic`.
@@ -628,7 +647,7 @@ O script pintou as células com erro no arquivo temporário. Pegamos esse arquiv
    [⚡ Output — de Tabela HTML]
 
    As células com problema estão destacadas no arquivo em anexo
-   (vermelho = campo vazio, amarelo = fábrica em sigla).
+   (vermelho = campo vazio, amarelo = QTDE NF diferente de QTDE FÍSICA).
    Por favor, corrija e RESPONDA ESTE E-MAIL com o arquivo corrigido.
    ```
    - "mensagem": ⚡ em `Validar` → **mensagem** (ou **fx** `outputs('Validar')?['body/result/mensagem']`).
@@ -641,7 +660,7 @@ O script pintou as células com erro no arquivo temporário. Pegamos esse arquiv
 1. **+** → `Send an email (V2)`.
 2. **To**: ⚡ variável **EmailsTime**.
 3. **Subject**: `Arquivo recusado - ` + **fx** `items('Cada_anexo')?['name']`
-4. **Body**: `Remetente: ` ⚡ **From** · `Problemas: ` ⚡ **mensagem** de `Validar`.
+4. **Body**: `Remetente: ` ⚡ **From** · `Problemas: ` ⚡ **mensagem** de `Validar` · `Detalhe: ` ⚡ **Output** de `Tabela HTML`.
 
 **8e. Apagar o arquivo temporário**
 1. **+** → `Delete file` (SharePoint) → renomeie para `Apagar invalido`.
@@ -763,7 +782,16 @@ Dentro do ramo **False** de `Conteudo repetido`. **Só aqui** algo é guardado.
 1. **+** → `Reply to email (V3)`.
 2. **Message Id**: ⚡ **Message Id** do gatilho.
 3. **Body**: `Olá! Arquivo recebido e validado com sucesso. ` + ⚡ **mensagem** de `Validar`.
+   Se quiser listar as empresas corrigidas, acrescente pelo **fx**:
+   ```
+   join(outputs('Validar')?['body/result/corrigidos'], '<br>')
+   ```
 4. **Save**.
+
+**11d. (Opcional) Avisar o time sobre empresas desconhecidas**
+Se o script gerou avisos (empresa que não está no de-para), o time pode querer atualizar o de-para.
+1. **+** → `Condition`: esquerda **fx** `length(outputs('Validar')?['body/result/avisos'])` · **is greater than** · `0`.
+2. No **True**: `Send an email (V2)` para ⚡ **EmailsTime**, assunto `Empresas fora do de-para`, corpo **fx** `join(outputs('Validar')?['body/result/avisos'], '<br>')`.
 
 > **Por que mover antes de registrar?** Se o registro fosse feito primeiro e o `Move file` falhasse, o caderno diria "aceito" para um arquivo que não está em Validados — e a camada 1 bloquearia a nova tentativa. Movendo antes, um registro na lista sempre significa "arquivo está em Validados".
 
@@ -859,8 +887,8 @@ Assim os anexos são processados um por vez. Com processamento paralelo, dois an
 # Parte 6 — Testar tudo
 
 Prepare:
-- `teste_erro.xlsx`: com uma célula vazia e uma fábrica `FAB-SP`.
-- `teste_ok.xlsx`: o mesmo arquivo corrigido (sem vazios, fábrica com nome completo).
+- `teste_erro.xlsx`: no formato real (cabeçalho com `EMPRESA FORNECEDORA` etc.), com uma célula obrigatória vazia (ex.: `CRD`) e uma linha com `QTDE NF` ≠ `QTDE FÍSICA`.
+- `teste_ok.xlsx`: o mesmo arquivo corrigido, com pelo menos uma empresa escrita de forma abreviada que esteja no de-para.
 - Uma imagem qualquer (`foto.png`).
 
 Depois de cada teste, confira: **(1)** o histórico da execução, **(2)** a lista ArquivosRecebidos, **(3)** as pastas Temp e Validados, **(4)** a caixa do remetente.
@@ -868,11 +896,12 @@ Depois de cada teste, confira: **(1)** o histórico da execução, **(2)** a lis
 | # | O que fazer | Resultado esperado |
 |---|---|---|
 | 1 | E-mail com o assunto certo e `teste_erro.xlsx` | Resposta com tabela de erros + arquivo colorido; e-mail ao time; **lista sem linha nova**; **Temp vazia**; **nada** em Validados |
-| 2 | **Responda** a resposta com `teste_ok.xlsx` | Resposta "validado"; **uma linha** na lista (Válido); arquivo em **Validados**; Temp vazia |
+| 2 | **Responda** a resposta com `teste_ok.xlsx` | Resposta "validado" informando a empresa corrigida; **uma linha** na lista (Válido); arquivo em **Validados** já com o nome completo; Temp vazia |
 | 3 | E-mail **novo** com `teste_ok.xlsx` de novo | Resposta "já recebido em ..."; **lista sem linha nova**; Temp vazia; nada novo em Validados |
 | 4 | **My flows** → fluxo → execução do teste 2 → **Resubmit** | Passa pelo **False** de `Email novo`: **nenhum** arquivo, **nenhuma** linha, **nenhum** e-mail |
 | 5 | E-mail com `teste_erro.xlsx` **e** `foto.png` | A foto é ignorada (False de `Eh xlsx`); o xlsx recebe a resposta de erros |
-| 6 | No campo `nomeAba` do `Validar`, coloque um nome de aba que não existe e envie um arquivo | `Validar` falha → `Catch` envia o e-mail de erro (depois, volte o nome certo e apague a sobra da Temp) |
+| 6 | Envie um `.xlsx` sem a coluna `CRD` no cabeçalho | Resposta "cabeçalho incompleto" com a coluna que falta; nada guardado |
+| 7 | No `Validar`, troque temporariamente o **Script** por um que não existe e envie um arquivo | `Validar` falha → `Catch` envia o e-mail de erro (depois, volte o script certo e apague a sobra da Temp) |
 
 Os testes **3** e **4** são as provas da idempotência; o teste **1** prova que nada errado é guardado. Tire print deles para a apresentação.
 
@@ -892,6 +921,8 @@ Os testes **3** e **4** são as provas da idempotência; o teste **1** prova que
 | Hora no nome 3h adiantada | Faltou converter do UTC | Use a expressão com `convertFromUtc` da Etapa 6 |
 | `Move file` falha | Já existe arquivo com o mesmo nome em Validados | **If another file is already there** = `Copy with a new name` |
 | `Delete file` falha | Arquivo ainda em uso pelo Excel logo após o script | Adicione um `Delay` de 5–10 segundos antes do `Delete file` |
+| "Cabeçalho 'EMPRESA FORNECEDORA' não encontrado" | Arquivo fora do modelo ou cabeçalho com outro texto | Confira o texto do cabeçalho; se a coluna tiver outro nome aceito, inclua em `headers` no `COLUNAS` |
+| Empresa abreviada não foi corrigida | Não está no `DE_PARA`, ou a célula tem fórmula, ou o arquivo tinha erro | Inclua no `DE_PARA`; correções só acontecem em arquivo válido |
 | Sobram arquivos na Temp | Fluxo falhou no meio | Apague manualmente; veja no histórico qual execução falhou |
 | Resposta do remetente não dispara o fluxo | Assunto não contém o filtro, ou veio sem anexo | Filtro deve ser uma palavra sempre presente no assunto; peça para responder **com** o arquivo |
 
@@ -922,10 +953,13 @@ base64ToBinary(items('Cada_anexo')?['contentBytes'])
 outputs('Validar')?['body/result/valido']
 
 # Etapa 8 — Tabela de erros.From
-outputs('Validar')?['body/result/erros']
+outputs('Validar')?['body/result/errosTabela']
 
 # Etapa 8 — Tabela de erros.Map (valores)
-item()?['linha']   item()?['coluna']   item()?['valor']   item()?['problema']   item()?['sugestao']
+item()?['linha']   item()?['coluna']   item()?['valor']
+
+# Etapa 8 — Tabela de erros.Map "O que fazer"
+if(equals(item()?['problema'], 'CAMPO_VAZIO'), 'Preencher o campo', if(equals(item()?['problema'], 'QTDE_DIVERGENTE'), 'Conferir QTDE NF e QTDE FÍSICA (devem ser iguais)', 'Incluir esta coluna no cabeçalho'))
 
 # Etapa 8 — mensagem do script
 outputs('Validar')?['body/result/mensagem']
@@ -945,6 +979,11 @@ formatDateTime(convertFromUtc(first(body('Busca_hash')?['value'])?['Created'], '
 # Etapa 11 — Registrar.Hash / Registrar.Linhas
 outputs('Validar')?['body/result/hash']
 outputs('Validar')?['body/result/totalLinhas']
+
+# Etapa 11 — empresas corrigidas / avisos
+join(outputs('Validar')?['body/result/corrigidos'], '<br>')
+length(outputs('Validar')?['body/result/avisos'])
+join(outputs('Validar')?['body/result/avisos'], '<br>')
 
 # Etapa 12 — link da execução
 concat('https://make.powerautomate.com/environments/', workflow()?['tags']?['environmentName'], '/flows/', workflow()?['name'], '/runs/', workflow()?['run']?['name'])
